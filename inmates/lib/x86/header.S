@@ -40,12 +40,15 @@ start16:
 	mov %cr0,%eax
 	or $X86_CR0_PE,%al
 	mov %eax,%cr0
-
 	ljmpl $INMATE_CS32,$start32 + FSEGMENT_BASE
-
-
 	.code32
 start32:
+	mov $INMATE_DS32,%eax
+	mov %eax,%ds
+	mov %eax,%es
+	mov %eax,%ss
+	ljmpl $INMATE_CS32, $0x100000
+
 	mov %cr4,%eax
 	or $X86_CR4_PAE,%eax
 	mov %eax,%cr4
@@ -131,7 +134,7 @@ gdt:
 	.quad	0
 	.quad	0x00c09b000000ffff
 	.quad	0x00af9b000000ffff
-
+	.quad	0x00cf93000000ffff
 gdt_ptr:
 	.short	gdt_ptr - gdt - 1
 	.long	gdt + FSEGMENT_BASE
