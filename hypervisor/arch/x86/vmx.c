@@ -1102,6 +1102,11 @@ static void dump_guest_regs(union registers *guest_regs)
 		     vmcs_read64(GUEST_CS_BASE),
 		     vmcs_read32(GUEST_CS_AR_BYTES),
 		     !!(vmcs_read32(VM_ENTRY_CONTROLS) & VM_ENTRY_IA32E_MODE));
+	panic_printk("DS: %lx BASE: 0x%016lx AR-BYTES: %x EFER.LMA %d\n",
+		     vmcs_read64(GUEST_DS_SELECTOR),
+		     vmcs_read64(GUEST_DS_BASE),
+		     vmcs_read32(GUEST_DS_AR_BYTES),
+		     !!(vmcs_read32(VM_ENTRY_CONTROLS) & VM_ENTRY_IA32E_MODE));
 	panic_printk("CR0: 0x%016lx CR3: 0x%016lx CR4: 0x%016lx\n",
 		     vmcs_read64(GUEST_CR0), vmcs_read64(GUEST_CR3),
 		     vmcs_read64(GUEST_CR4));
@@ -1128,6 +1133,30 @@ void vcpu_vendor_get_mmio_intercept(struct vcpu_mmio_intercept *mmio)
 	/* We don't enable dirty/accessed bit updated in EPTP,
 	 * so only read of write flags can be set, not both. */
 	mmio->is_write = !!(exitq & 0x2);
+}
+
+static void vcpu_instruction_detail(struct per_cpu *cpu_data)
+{
+	u64 rip = vmcs_read64(GUEST_RIP);
+	u64 len = vmcs_read64(VM_EXIT_INSTRUCTION_LEN);
+	u64 hphys= arch_paging_gphys2phys(cpu_data, rip, PAGE_READONLY_FLAGS);
+	void *tmp;
+	void *inst;
+	u32 *inst32;
+	u64 *inst64;
+
+	tmp = inst = paging_map_device(hphys, PAGE_SIZE);
+	tmp += (rip % PAGE_SIZE);
+	inst32 = tmp;
+	inst64 = tmp;
+
+	printk("RIP:0x%llx, LEN:%llu, RIP HPHYS:0x%llx HVIRT:%p\n", 
+			rip, len, hphys, tmp);
+	
+	printk("Code32 0x%x\n", *inst32);
+	printk("Code64 0x%llx\n", *inst64);
+
+	paging_unmap_device(hphys, inst, PAGE_SIZE);	
 }
 
 void vcpu_handle_exit(struct per_cpu *cpu_data)
@@ -1194,6 +1223,7 @@ void vcpu_handle_exit(struct per_cpu *cpu_data)
 			     (reason & EXIT_REASONS_FAILED_VMENTRY) ?
 			     "VM-Entry failure" : "Unhandled VM-Exit",
 			     (u16)reason);
+		vcpu_instruction_detail(cpu_data);
 		dump_vm_exit_details(reason);
 		break;
 	}
