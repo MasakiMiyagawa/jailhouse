@@ -27,7 +27,7 @@ struct {
 	.cell = {
 		.signature = JAILHOUSE_CELL_DESC_SIGNATURE,
 		.revision = JAILHOUSE_CONFIG_REVISION,
-		.name = "apic-demo",
+		.name = "jsp-demo",
 		.flags = JAILHOUSE_CELL_DEBUG_CONSOLE,
 		.cpu_set_size = sizeof(config.cpus),
 		.num_memory_regions = ARRAY_SIZE(config.mem_regions),
